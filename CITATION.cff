@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "mosaic-event-circos"
+version: "1.1.0"
+date-released: "2026-07-17"
+license: "MIT"
+repository-code: "https://github.com/NCI-CGR/mosaic-event-circos"
+url: "https://github.com/NCI-CGR/mosaic-event-circos"
+abstract: "R/circlize workflow for plotting autosomal mosaic chromosomal alteration events with automatic lane assignment, automatic track sizing, and equal tile height across event types."
+authors:
+  - name: "NCI-CGR"
+keywords:
+  - "mosaic chromosomal alterations"
+  - "mCAs"
+  - "MoChA"
+  - "circos"
+  - "circlize"
+  - "genomics"

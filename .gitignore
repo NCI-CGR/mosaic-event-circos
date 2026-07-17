@@ -1,0 +1,31 @@
+# Local input data and full analysis outputs.
+data/
+output/
+
+# Generated plots and tables outside curated example_output.
+*.png
+*.pdf
+*.tsv
+
+# Keep the public example files.
+!example_data/
+!example_data/*.txt
+!example_data/*.tsv
+!example_output/
+!example_output/*.png
+!example_output/*.pdf
+!example_output/*_track_summary.tsv
+!example_output/*_lane_summary_by_chrom.tsv
+
+# R session files.
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# OS/editor files.
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+~$*

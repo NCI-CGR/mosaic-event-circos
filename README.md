@@ -2,7 +2,7 @@
 
 R/circlize workflow for plotting autosomal mosaic chromosomal alteration events with automatic lane assignment, automatic track sizing, and equal tile height across event types.
 
-This script was developed for visualizing mosaic event calls such as `Gain`, `CN-LOH`, and `Loss` across autosomes. It is designed to replace manual tuning of Circos tile-track parameters with a reproducible R workflow.
+This script was developed for visualizing mosaic event calls such as `Gain`, `CN-LOH`, `Loss`, and optionally `Undetermined` across autosomes. It is designed to replace manual tuning of Circos tile-track parameters with a reproducible R workflow.
 
 ![Example circos plot](example_output/mosaic_events_autosomal.example_circos.png)
 
@@ -10,6 +10,7 @@ This script was developed for visualizing mosaic event calls such as `Gain`, `CN
 
 - Draws autosomal circos plots from tab-delimited mosaic event files.
 - Supports `Gain`, `CN-LOH`, and `Loss` by default.
+- Can also plot `Undetermined` as an optional fourth event track.
 - Assigns overlapping events to separate radial lanes.
 - Lets non-overlapping events share a lane.
 - Automatically scales track heights from event overlap density.
@@ -68,15 +69,16 @@ Rscript plot_mosaic_circos.R \
 mosaic-event-circos/
   README.md
   plot_mosaic_circos.R
+  VERSION
+  LICENSE
+  CHANGELOG.md
+  CITATION.cff
+  .gitignore
   example_data/
     mosaic_events_autosomal.example.txt
   example_output/
     mosaic_events_autosomal.example_circos.png
     mosaic_events_autosomal.example_circos_track_summary.tsv
-  docs/
-    method.md
-  LICENSE
-  .gitignore
 ```
 
 Before making example files public, replace real sample IDs and other sensitive fields with synthetic or de-identified values.
@@ -133,6 +135,15 @@ Rscript plot_mosaic_circos.R \
   --types=Gain,CN-LOH,Loss
 ```
 
+To include MoChA `Undetermined` events as a fourth track:
+
+```bash
+Rscript plot_mosaic_circos.R \
+  --input=my_events.txt \
+  --output-prefix=output/my_events_circos_with_undetermined \
+  --types=Gain,CN-LOH,Loss,Undetermined
+```
+
 Track order follows the order supplied in `--types`. With the default order:
 
 ```text
@@ -150,6 +161,7 @@ The default color mapping is:
 | `Gain` | Green | Light green alpha fill |
 | `CN-LOH` | Blue | Light blue alpha fill |
 | `Loss` | Red | Light red alpha fill |
+| `Undetermined` | Gray | Light gray alpha fill |
 
 Backgrounds use the same base color family as the event tiles with `alpha.f = 0.18`, plus a faint track border with `alpha.f = 0.35`. This keeps track identities visible while making the event intervals the strongest visual signal.
 
@@ -228,7 +240,7 @@ total lanes = 76 + 96 + 68 = 240
 common lane height = 0.70 / 240 = 0.00292
 ```
 
-The equal `lane_height_fraction` confirms equal tile height across the three tracks.
+The equal `lane_height_fraction` confirms equal tile height across the plotted tracks.
 
 ## Output Files
 
@@ -294,10 +306,10 @@ The script keeps a stable filename:
 plot_mosaic_circos.R
 ```
 
-The script version is recorded inside the file as:
+The current release is recorded in the root-level `VERSION` file. The same version is also recorded inside `plot_mosaic_circos.R` as:
 
 ```r
-script_version <- "1.0.0"
+script_version <- "1.1.0"
 ```
 
 You can check it with:
@@ -309,8 +321,10 @@ Rscript plot_mosaic_circos.R --version
 For GitHub releases, keep the filename unchanged and use Git tags such as `v1.0.0`, `v1.0.1`, and `v1.1.0` to freeze specific versions. Users can retrieve an exact version with:
 
 ```bash
-git checkout v1.0.0
+git checkout v1.1.0
 ```
+
+Version history is summarized in `CHANGELOG.md`.
 
 ## Examples
 
@@ -380,27 +394,18 @@ For public examples:
 - Keep only the columns needed to run the example, or use synthetic values for non-required columns.
 - Consider using a small subset of events if the full dataset is sensitive or large.
 
-## Suggested `.gitignore`
+## `.gitignore`
 
-```text
-data/
-output/
-*.png
-*.pdf
-*.tsv
-!example_data/*.txt
-!example_data/*.tsv
-!example_output/*.png
-!example_output/*_track_summary.tsv
-!example_output/*_lane_summary_by_chrom.tsv
-```
-
-Adjust this depending on whether you want to include example output images in the repository.
+The repository includes a `.gitignore` to help avoid committing private input data, large analysis outputs, and local temporary files. The bundled `example_data` and `example_output` folders are intentionally kept for demonstration.
 
 ## Citation / Method Text
 
-Autosomal mosaic chromosomal alteration events were visualized using an R workflow based on the `circlize` package. Events were grouped by type (`Gain`, `CN-LOH`, and `Loss`) and plotted as genomic intervals on autosomal chromosome ideograms. Within each chromosome and event type, overlapping events were assigned to separate radial lanes, while non-overlapping events were allowed to share a lane. Track heights were calculated automatically from the maximum number of lanes required for each event type. A fixed total radial space was reserved for event tracks, and equal lane height was used across event types to enable visual comparison of event density while preventing tile overlap. Event tracks were drawn with light alpha-colored backgrounds and stronger colored event tiles.
+Autosomal mosaic chromosomal alteration events were visualized using an R workflow based on the `circlize` package. Events were grouped by type, typically `Gain`, `CN-LOH`, and `Loss`, with optional inclusion of `Undetermined`, and plotted as genomic intervals on autosomal chromosome ideograms. Within each chromosome and event type, overlapping events were assigned to separate radial lanes, while non-overlapping events were allowed to share a lane. Track heights were calculated automatically from the maximum number of lanes required for each event type. A fixed total radial space was reserved for event tracks, and equal lane height was used across event types to enable visual comparison of event density while preventing tile overlap. Event tracks were drawn with light alpha-colored backgrounds and stronger colored event tiles.
 
 ## License
 
-Add a license before sharing publicly. MIT or BSD-3-Clause are common choices for small scientific utility scripts, but use the license preferred by your institution or project.
+This project is distributed under the MIT License. See `LICENSE`.
+
+## Citation
+
+Citation metadata are provided in `CITATION.cff`, which allows GitHub to display citation information for the repository.
