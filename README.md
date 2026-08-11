@@ -1,8 +1,10 @@
 # mosaic-event-circos
 
-R/circlize workflow for plotting autosomal mosaic chromosomal alteration events with automatic lane assignment, automatic track sizing, and equal tile height across event types.
+mosaic-event-circos is an R workflow for plotting autosomal mosaic chromosomal alteration events with overlap-aware lane assignment and automatic track scaling. It replaces dataset-specific manual tuning of Circos track geometry with data-driven layout calculations and uses the `circlize` R package to render the circular genome plot.
 
-This script was developed for visualizing mosaic event calls such as `Gain`, `CN-LOH`, `Loss`, and optionally `Undetermined` across autosomes. It is designed to replace manual tuning of Circos tile-track parameters with a reproducible R workflow.
+The workflow was developed to replace manual adjustment of Circos tile-track parameters such as radial track boundaries (`r0`/`r1`), tile thickness, padding, and layer settings. Instead, track dimensions are calculated from the overlap structure of the input events so individual event tiles retain a consistent radial thickness across event types.
+
+The workflow does not call the command-line Circos software or generate a `circos.conf`; circular plotting is performed directly in R using `circlize`.
 
 ![Example circos plot](example_output/mosaic_events_autosomal.example_circos.png)
 
@@ -13,8 +15,9 @@ This script was developed for visualizing mosaic event calls such as `Gain`, `CN
 - Can also plot `Undetermined` as an optional fourth event track.
 - Assigns overlapping events to separate radial lanes.
 - Lets non-overlapping events share a lane.
-- Automatically scales track heights from event overlap density.
-- Uses equal tile height across event tracks, making event density easier to compare visually.
+- Calculates track height from the maximum number of stacked lanes required for each event type.
+- Uses a common lane height across event tracks so individual event tiles have consistent radial thickness.
+- Allows tracks with greater overlap to expand rather than compressing individual tiles.
 - Uses light alpha-colored track backgrounds with stronger event tiles.
 - Supports both GRCh38/hg38 and GRCh37/hg19 coordinates.
 - Writes PNG, PDF, and diagnostic summary tables.
@@ -54,14 +57,7 @@ example_output/mosaic_events_autosomal.example_circos_track_summary.tsv
 example_output/mosaic_events_autosomal.example_circos_lane_summary_by_chrom.tsv
 ```
 
-For a GRCh37/hg19 input file:
-
-```bash
-Rscript plot_mosaic_circos.R \
-  --input=example_data/mosaic_events_autosomal.GRCh37.example.txt \
-  --output-prefix=example_output/mosaic_events_autosomal.GRCh37_circos \
-  --genome=hg19
-```
+GRCh37/hg19 input files are also supported by using `--genome=hg19`; see the GRCh37/hg19 template below.
 
 ## Suggested Repository Layout
 
@@ -165,6 +161,23 @@ The default color mapping is:
 
 Backgrounds use the same base color family as the event tiles with `alpha.f = 0.18`, plus a faint track border with `alpha.f = 0.35`. This keeps track identities visible while making the event intervals the strongest visual signal.
 
+## Why Automatic Scaling?
+
+Previous Circos-based workflows required manually specifying radial track boundaries and tile-layout parameters for each event type. Appropriate settings depended on the number and overlap pattern of events in a dataset, so parameters that worked for one dataset could produce overcrowded tracks or very thin tiles in another.
+
+mosaic-event-circos moves these layout decisions into the R workflow:
+
+```text
+Input events
+  -> assign non-overlapping lanes
+  -> determine max_lanes for each event type
+  -> calculate a common lane height
+  -> calculate event-type track heights
+  -> render with circlize
+```
+
+More overlap expands the event-type track rather than compressing individual event tiles.
+
 ## How Lane Assignment Works
 
 A lane is a radial row used to draw events without overlap within the same event type and chromosome.
@@ -172,8 +185,8 @@ A lane is a radial row used to draw events without overlap within the same event
 For each event type and chromosome, the script:
 
 1. Sorts events by start coordinate, end coordinate, and sample ID.
-2. Places each event into the first lane where it does not overlap the previous event in that lane.
-3. Creates a new lane only when all existing lanes overlap the current event.
+2. Places each event into the first existing lane whose most recently assigned interval ends at or before the current event begins.
+3. Creates a new lane only when no existing lane is available.
 
 Two non-overlapping events can share one lane:
 
@@ -203,7 +216,7 @@ n_events = 2
 n_lanes  = 2
 ```
 
-The `max_lanes` value in the output summary is the maximum number of lanes required by an event type on any chromosome. It is not the total number of events.
+The `max_lanes` value in the output summary is the maximum number of lanes required by an event type on any chromosome. It is not the total number of events. Thus, track height is determined by the chromosome with the greatest overlap requirement for that event type, not by the total number of events. For example, many widely separated events can require fewer lanes than a smaller number of heavily overlapping events.
 
 ## Automatic Track Sizing
 
@@ -222,7 +235,7 @@ common_lane_height = total_height / sum(max_lanes)
 track_height = max_lanes_for_type * common_lane_height
 ```
 
-Because every event type uses the same `common_lane_height`, individual tile thickness is the same across tracks. Tracks with more stacked lanes become wider.
+Because every event type uses the same `common_lane_height`, individual tile thickness is the same across tracks. Tracks requiring more stacked lanes receive greater radial height, while individual lane/tile thickness remains constant across event types.
 
 Example:
 
@@ -240,7 +253,7 @@ total lanes = 76 + 96 + 68 = 240
 common lane height = 0.70 / 240 = 0.00292
 ```
 
-The equal `lane_height_fraction` confirms equal tile height across the plotted tracks.
+The common `lane_height_fraction` confirms consistent lane/tile thickness across the plotted tracks.
 
 ## Output Files
 
@@ -263,11 +276,11 @@ The track summary reports one row per event type:
 | `n_events` | Total number of events of that type. |
 | `max_lanes` | Maximum number of lanes needed on any chromosome. |
 | `track_height_fraction` | Radial height assigned to that event type track. |
-| `lane_height_fraction` | Radial height per lane. This should be equal across event types in the current implementation. |
+| `lane_height_fraction` | Radial height per lane. This should be the same across event types in the current implementation. |
 
 ### Lane Summary by Chromosome
 
-The lane summary reports event density by event type and chromosome:
+The lane summary reports event counts and lane requirements by event type and chromosome:
 
 | Column | Description |
 | --- | --- |
@@ -328,7 +341,7 @@ Version history is summarized in `CHANGELOG.md`.
 
 ## Examples
 
-### Public PLCO Subset Example, GRCh38
+### Bundled Example Dataset, GRCh38
 
 ```bash
 Rscript plot_mosaic_circos.R \
@@ -346,14 +359,16 @@ CN-LOH  200       20         0.1944                 0.00972
 Loss    200       23         0.2236                 0.00972
 ```
 
-The bundled example is a subset sampled from a public PLCO-derived dataset, with sample IDs replaced by synthetic IDs (`S1`, `S2`, ...). If an original sample has multiple selected mosaic events, the same synthetic ID is used for each event from that sample.
+The bundled example is a small demonstration dataset with sample IDs replaced by synthetic IDs (`S1`, `S2`, ...). If an original sample has multiple selected mosaic events, the same synthetic ID is used for each event from that sample. Confirm redistribution approval for any cohort-derived example data before sharing it publicly.
 
-### Older GRCh37/hg19 Data
+### Template for GRCh37/hg19 Data
+
+For user-provided GRCh37/hg19 data, use `--genome=hg19`. By default, the script then uses `beg_GRCh37` and `end_GRCh37` as the coordinate columns unless `--start-column` and `--end-column` are supplied.
 
 ```bash
 Rscript plot_mosaic_circos.R \
-  --input=example_data/mosaic_events_autosomal.GRCh37.example.txt \
-  --output-prefix=example_output/mosaic_events_autosomal.GRCh37_circos \
+  --input=my_mca_events.GRCh37.txt \
+  --output-prefix=output/my_mca_events.hg19_circos \
   --genome=hg19
 ```
 
@@ -400,7 +415,7 @@ The repository includes a `.gitignore` to help avoid committing private input da
 
 ## Citation / Method Text
 
-Autosomal mosaic chromosomal alteration events were visualized using an R workflow based on the `circlize` package. Events were grouped by type, typically `Gain`, `CN-LOH`, and `Loss`, with optional inclusion of `Undetermined`, and plotted as genomic intervals on autosomal chromosome ideograms. Within each chromosome and event type, overlapping events were assigned to separate radial lanes, while non-overlapping events were allowed to share a lane. Track heights were calculated automatically from the maximum number of lanes required for each event type. A fixed total radial space was reserved for event tracks, and equal lane height was used across event types to enable visual comparison of event density while preventing tile overlap. Event tracks were drawn with light alpha-colored backgrounds and stronger colored event tiles.
+Autosomal mosaic chromosomal alteration events were visualized using mosaic-event-circos, an automated R script that prepares mosaic-event intervals and controls `circlize` plotting parameters. Events were grouped by type, typically `Gain`, `CN-LOH`, and `Loss`, with optional inclusion of `Undetermined`, and plotted as genomic intervals on autosomal chromosome ideograms. Within each chromosome and event type, overlapping events were assigned to separate radial lanes, while non-overlapping events were allowed to share a lane. A fixed total radial space was reserved for event tracks, and a common lane height was calculated across event types. Track height was then proportional to the maximum number of lanes required by each event type on any chromosome, allowing tracks with greater overlap to expand while maintaining consistent radial thickness of individual event tiles. Event tracks were drawn with light alpha-colored backgrounds and stronger colored event tiles.
 
 ## License
 

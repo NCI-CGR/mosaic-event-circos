@@ -7,9 +7,9 @@ date-released: "2026-07-17"
 license: "MIT"
 repository-code: "https://github.com/NCI-CGR/mosaic-event-circos"
 url: "https://github.com/NCI-CGR/mosaic-event-circos"
-abstract: "R/circlize workflow for plotting autosomal mosaic chromosomal alteration events with automatic lane assignment, automatic track sizing, and equal tile height across event types."
+abstract: "Automated R script for plotting autosomal mosaic chromosomal alteration events with dynamic lane assignment, track sizing, and equal tile height across event types; circlize provides the circular genome plotting system."
 authors:
-  - name: "NCI-CGR"
+  - name: "Weiyin Zhou"
 keywords:
   - "mosaic chromosomal alterations"
   - "mCAs"
