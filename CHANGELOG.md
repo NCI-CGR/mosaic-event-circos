@@ -4,6 +4,13 @@ All notable changes to `mosaic-event-circos` are recorded here.
 
 ## Unreleased
 
+## v1.1.1 - 2026-08-14
+
+- Made `sample_id` optional for input files; if absent, the script creates row-based IDs internally for stable event sorting.
+- Added `--sample-column=NAME` for files that use an alternate sample identifier column.
+- Added input delimiter support through `--sep=auto|tab|space|whitespace`.
+- Added automatic detection of tab-delimited versus whitespace-delimited input files.
+- Updated README and method notes for space-delimited input files.
 - Added fully synthetic three-type and four-type example mosaic event files for testing.
 - Added `scripts/generate_synthetic_example_data.R` to regenerate the synthetic examples.
 - Updated the README to use `example_output/synthetic.3types.default.png` as the primary example figure.

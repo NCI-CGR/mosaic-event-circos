@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
 title: "mosaic-event-circos"
-version: "1.1.0"
-date-released: "2026-07-17"
+version: "1.1.1"
+date-released: "2026-08-14"
 license: "MIT"
 repository-code: "https://github.com/NCI-CGR/mosaic-event-circos"
 url: "https://github.com/NCI-CGR/mosaic-event-circos"

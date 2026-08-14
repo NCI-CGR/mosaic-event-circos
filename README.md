@@ -10,7 +10,7 @@ The workflow does not call the command-line Circos software or generate a `circo
 
 ## Features
 
-- Draws autosomal circos plots from tab-delimited mosaic event files.
+- Draws autosomal circos plots from tab- or whitespace-delimited mosaic event files.
 - Supports `Gain`, `CN-LOH`, and `Loss` by default.
 - Can also plot `Undetermined` as an optional fourth event track.
 - Assigns overlapping events to separate radial lanes.
@@ -86,17 +86,22 @@ The bundled example files are fully synthetic. For any additional public example
 
 ## Input Format
 
-The input file should be tab-delimited with one event per row.
+The input file should contain one event per row. Tab-delimited files and space/whitespace-delimited files are supported.
 
 Required fields:
 
 | Column | Description |
 | --- | --- |
-| `sample_id` | Sample or subject identifier. Used only for stable sorting during lane assignment. |
 | `chrom` | Chromosome, such as `chr1` or `1`. Autosomes `chr1`-`chr22` are plotted. |
 | start coordinate | Genomic start coordinate. Default depends on `--genome`. |
 | end coordinate | Genomic end coordinate. Default depends on `--genome`. |
 | event type | Event class, such as `Gain`, `CN-LOH`, or `Loss`. |
+
+Optional fields:
+
+| Column | Description |
+| --- | --- |
+| `sample_id` | Sample or subject identifier. Used only for stable sorting during lane assignment. If absent, row-based IDs are created internally. |
 
 Default coordinate columns:
 
@@ -107,7 +112,11 @@ Default coordinate columns:
 
 By default, the script looks for an event type column named `type_FINAL`. If `type_FINAL` is absent and a column named `type` exists, the script automatically uses `type`.
 
-You can override the event type and coordinate columns:
+By default, the script looks for a sample identifier column named `sample_id`. If `sample_id` is absent, the script creates row-based IDs internally because the identifier is used only as a stable sorting tie-breaker. If your file uses another sample ID column name, provide it with `--sample-column`.
+
+By default, the script auto-detects whether the input is tab-delimited or whitespace-delimited. You can also set this explicitly with `--sep=tab`, `--sep=space`, or `--sep=whitespace`. The `space` and `whitespace` options treat one or more spaces or tabs as the delimiter.
+
+You can override the event type, sample ID, delimiter, and coordinate columns:
 
 ```bash
 Rscript plot_mosaic_circos.R \
@@ -115,6 +124,8 @@ Rscript plot_mosaic_circos.R \
   --output-prefix=output/my_events_circos \
   --genome=hg19 \
   --type-column=type \
+  --sample-column=subject_id \
+  --sep=space \
   --start-column=start_GRCh37 \
   --end-column=end_GRCh37
 ```
@@ -299,10 +310,13 @@ This file is useful for identifying which chromosomes drive the maximum lane cou
 ## Command-Line Options
 
 ```text
---input=FILE             Input tab-delimited mosaic events file.
+--input=FILE             Input tab- or whitespace-delimited mosaic events file.
 --output-prefix=PREFIX   Output prefix for PNG/PDF/summary files.
 --types=A,B,C            Comma-separated event type values to plot.
 --type-column=NAME       Event type column. Default: type_FINAL; falls back to type.
+--sample-column=NAME     Sample ID column. Default: sample_id; if absent, row IDs are used.
+--sep=auto|tab|space|whitespace
+                         Input delimiter. Default: auto.
 --genome=hg38|hg19       Genome build. Default: hg38.
 --start-column=NAME      Override start coordinate column.
 --end-column=NAME        Override end coordinate column.
@@ -327,7 +341,7 @@ plot_mosaic_circos.R
 The current release is recorded in the root-level `VERSION` file. The same version is also recorded inside `plot_mosaic_circos.R` as:
 
 ```r
-script_version <- "1.1.0"
+script_version <- "1.1.1"
 ```
 
 You can check it with:
@@ -336,10 +350,10 @@ You can check it with:
 Rscript plot_mosaic_circos.R --version
 ```
 
-For GitHub releases, keep the filename unchanged and use Git tags such as `v1.0.0`, `v1.0.1`, and `v1.1.0` to freeze specific versions. Users can retrieve an exact version with:
+For GitHub releases, keep the filename unchanged and use Git tags such as `v1.0.0`, `v1.0.1`, and `v1.1.1` to freeze specific versions. Users can retrieve an exact version with:
 
 ```bash
-git checkout v1.1.0
+git checkout v1.1.1
 ```
 
 Version history is summarized in `CHANGELOG.md`.

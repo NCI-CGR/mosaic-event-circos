@@ -2,7 +2,7 @@
 
 default_input <- file.path("data", "mosaic_events_autosomal.txt")
 default_prefix <- "mosaic_events_autosomal_circos"
-script_version <- "1.0.0"
+script_version <- "1.1.1"
 
 load_required_packages <- function() {
   suppressPackageStartupMessages({
@@ -19,6 +19,8 @@ parse_args <- function(args) {
     output_prefix = default_prefix,
     types = c("Gain", "CN-LOH", "Loss"),
     type_column = "type_FINAL",
+    sample_column = "sample_id",
+    sep = "auto",
     genome = "hg38",
     start_column = NULL,
     end_column = NULL,
@@ -41,6 +43,10 @@ parse_args <- function(args) {
       opts$types <- trimws(opts$types)
     } else if (grepl("^--type-column=", arg)) {
       opts$type_column <- sub("^--type-column=", "", arg)
+    } else if (grepl("^--sample-column=", arg)) {
+      opts$sample_column <- sub("^--sample-column=", "", arg)
+    } else if (grepl("^--sep=", arg)) {
+      opts$sep <- tolower(sub("^--sep=", "", arg))
     } else if (grepl("^--genome=", arg)) {
       opts$genome <- tolower(sub("^--genome=", "", arg))
     } else if (grepl("^--start-column=", arg)) {
@@ -70,10 +76,13 @@ parse_args <- function(args) {
         "Usage:\n",
         "  Rscript plot_mosaic_circos.R [options]\n\n",
         "Options:\n",
-        "  --input=FILE             Input tab-delimited mosaic events file.\n",
+        "  --input=FILE             Input tab- or whitespace-delimited mosaic events file.\n",
         "  --output-prefix=PREFIX   Output prefix for PNG/PDF/summary files.\n",
-        "  --types=A,B,C            Comma-separated type_FINAL values to plot.\n",
+        "  --types=A,B,C            Comma-separated event type values to plot.\n",
         "  --type-column=NAME       Event type column. Default: type_FINAL; falls back to type.\n",
+        "  --sample-column=NAME     Sample ID column. Default: sample_id; if absent, row IDs are used.\n",
+        "  --sep=auto|tab|space|whitespace\n",
+        "                           Input delimiter. Default: auto.\n",
         "  --genome=hg38|hg19       Genome build. Default: hg38.\n",
         "                           hg38 uses beg_GRCh38/end_GRCh38 by default.\n",
         "                           hg19 uses beg_GRCh37/end_GRCh37 by default.\n",
@@ -100,6 +109,9 @@ parse_args <- function(args) {
   }
   if (!opts$genome %in% c("hg19", "hg38")) {
     stop("--genome must be either hg19 or hg38.")
+  }
+  if (!opts$sep %in% c("auto", "tab", "space", "whitespace")) {
+    stop("--sep must be one of: auto, tab, space, whitespace.")
   }
 
   default_coord_cols <- switch(
@@ -226,18 +238,42 @@ allocate_track_heights <- function(max_lanes, total_height = 0.70) {
   max_lanes * common_lane_height
 }
 
-prepare_events <- function(input, types, chr_lengths, type_column = "type_FINAL",
-                           start_column = "beg_GRCh38", end_column = "end_GRCh38") {
-  required_cols <- c("sample_id", "chrom", start_column, end_column)
-  raw <- read.delim(
+read_event_table <- function(input, sep = "auto") {
+  sep <- tolower(sep)
+  if (!sep %in% c("auto", "tab", "space", "whitespace")) {
+    stop("--sep must be one of: auto, tab, space, whitespace.")
+  }
+
+  if (identical(sep, "auto")) {
+    preview <- readLines(input, n = 25, warn = FALSE)
+    preview <- preview[nzchar(trimws(preview)) & !grepl("^\\s*#", preview)]
+    if (length(preview) == 0) {
+      stop("Input file is empty or contains only blank/comment lines: ", input)
+    }
+    sep <- if (grepl("\t", preview[1], fixed = TRUE)) "tab" else "whitespace"
+    message("Auto-detected input delimiter: ", sep)
+  }
+
+  read_sep <- if (identical(sep, "tab")) "\t" else ""
+  read.table(
     input,
     header = TRUE,
-    sep = "\t",
+    sep = read_sep,
     quote = "",
     comment.char = "",
     stringsAsFactors = FALSE,
-    check.names = FALSE
+    check.names = FALSE,
+    strip.white = TRUE,
+    blank.lines.skip = TRUE
   )
+}
+
+prepare_events <- function(input, types, chr_lengths, type_column = "type_FINAL",
+                           sample_column = "sample_id",
+                           sep = "auto",
+                           start_column = "beg_GRCh38", end_column = "end_GRCh38") {
+  required_cols <- c("chrom", start_column, end_column)
+  raw <- read_event_table(input, sep)
 
   missing_cols <- setdiff(required_cols, names(raw))
   if (length(missing_cols) > 0) {
@@ -253,8 +289,26 @@ prepare_events <- function(input, types, chr_lengths, type_column = "type_FINAL"
     }
   }
 
+  row_id_width <- max(1, nchar(nrow(raw)))
+  make_row_ids <- function(i) {
+    sprintf(paste0("row_%0", row_id_width, "d"), i)
+  }
+
+  if (sample_column %in% names(raw)) {
+    sample_id <- as.character(raw[[sample_column]])
+  } else if (identical(sample_column, "sample_id")) {
+    message("Column 'sample_id' not found; using row numbers for stable event sorting.")
+    sample_id <- make_row_ids(seq_len(nrow(raw)))
+  } else {
+    stop("Missing sample ID column: ", sample_column)
+  }
+  missing_sample_id <- is.na(sample_id) | sample_id == ""
+  if (any(missing_sample_id)) {
+    sample_id[missing_sample_id] <- make_row_ids(which(missing_sample_id))
+  }
+
   events <- data.frame(
-    sample_id = raw$sample_id,
+    sample_id = sample_id,
     chrom = raw$chrom,
     start = suppressWarnings(as.numeric(raw[[start_column]])),
     end = suppressWarnings(as.numeric(raw[[end_column]])),
@@ -283,18 +337,21 @@ draw_mosaic_circos <- function(events, lane_summary, chr_meta, types, track_heig
   colors <- c(
     Gain = "#39b54a",
     `CN-LOH` = "#3c98cf",
-    Loss = "#ff4b36"
+    Loss = "#ff4b36",
+    Undetermined = "#8a8a8a"
   )
   borders <- c(
     Gain = "#2f9340",
     `CN-LOH` = "#2a7fb2",
-    Loss = "#dd3426"
+    Loss = "#dd3426",
+    Undetermined = "#666666"
   )
   # Light alpha backgrounds keep track identity visible without competing with event tiles.
   bg_base <- c(
     Gain = "#39b54a",
     `CN-LOH` = "#3c98cf",
-    Loss = "#ff4b36"
+    Loss = "#ff4b36",
+    Undetermined = "#8a8a8a"
   )
   backgrounds <- grDevices::adjustcolor(bg_base, alpha.f = 0.18)
   bg_borders <- grDevices::adjustcolor(bg_base, alpha.f = 0.35)
@@ -305,13 +362,19 @@ draw_mosaic_circos <- function(events, lane_summary, chr_meta, types, track_heig
   borders <- borders[types]
   backgrounds <- backgrounds[types]
   bg_borders <- bg_borders[types]
+  names(colors) <- types
+  names(borders) <- types
+  names(backgrounds) <- types
+  names(bg_borders) <- types
   missing_colors <- is.na(colors)
   if (any(missing_colors)) {
+    missing_types <- names(colors)[missing_colors]
     palette <- grDevices::hcl.colors(sum(missing_colors), palette = "Dark 3")
-    colors[missing_colors] <- palette
-    borders[missing_colors] <- palette
-    backgrounds[missing_colors] <- grDevices::adjustcolor(palette, alpha.f = 0.18)
-    bg_borders[missing_colors] <- grDevices::adjustcolor(palette, alpha.f = 0.35)
+    names(palette) <- missing_types
+    colors[missing_types] <- palette
+    borders[missing_types] <- palette
+    backgrounds[missing_types] <- grDevices::adjustcolor(palette, alpha.f = 0.18)
+    bg_borders[missing_types] <- grDevices::adjustcolor(palette, alpha.f = 0.35)
   }
 
   chromosomes <- names(chr_meta$chr_lengths)
@@ -336,7 +399,7 @@ draw_mosaic_circos <- function(events, lane_summary, chr_meta, types, track_heig
       plotType = c("ideogram", "axis", "labels"),
       ideogram.height = convert_height(2.5, "mm"),
       axis.labels.cex = 0.22,
-      labels.cex = 0.8
+      labels.cex = 1.15
     )
     if ("draw.chr.prefix" %in% names(formals(circos.initializeWithIdeogram))) {
       ideogram_args$draw.chr.prefix <- FALSE
@@ -356,7 +419,7 @@ draw_mosaic_circos <- function(events, lane_summary, chr_meta, types, track_heig
       plotType = c("axis", "labels"),
       tickLabelsStartFromZero = TRUE,
       axis.labels.cex = 0.22,
-      labels.cex = 0.8
+      labels.cex = 1.15
     )
   }
 
@@ -473,6 +536,8 @@ main <- function() {
     opts$types,
     chr_meta$chr_lengths,
     opts$type_column,
+    opts$sample_column,
+    opts$sep,
     opts$start_column,
     opts$end_column
   )
