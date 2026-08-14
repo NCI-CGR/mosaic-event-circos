@@ -2,6 +2,14 @@
 
 All notable changes to `mosaic-event-circos` are recorded here.
 
+## Unreleased
+
+- Added fully synthetic three-type and four-type example mosaic event files for testing.
+- Added `scripts/generate_synthetic_example_data.R` to regenerate the synthetic examples.
+- Updated the README to use `example_output/synthetic.3types.default.png` as the primary example figure.
+- Updated the Quick Start and example-output documentation to use the synthetic three-type dataset.
+- Removed README references to the older cohort-derived bundled example dataset.
+
 ## v1.1.0 - 2026-07-17
 
 - Added optional support for MoChA `Undetermined` events as a fourth track.
