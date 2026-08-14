@@ -1,4 +1,0 @@
-type	n_events	max_lanes	track_height_fraction	lane_height_fraction
-Gain	200	29	0.2819	0.00972
-CN-LOH	200	20	0.1944	0.00972
-Loss	200	23	0.2236	0.00972
