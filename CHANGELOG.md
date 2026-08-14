@@ -8,6 +8,8 @@ All notable changes to `mosaic-event-circos` are recorded here.
 - Added `scripts/generate_synthetic_example_data.R` to regenerate the synthetic examples.
 - Updated the README to use `example_output/synthetic.3types.default.png` as the primary example figure.
 - Updated the Quick Start and example-output documentation to use the synthetic three-type dataset.
+- Added rendered four-type synthetic example output under `example_output/synthetic.4types.default.*`.
+- Added README comparison of three-type versus four-type `lane_height_fraction`.
 - Removed README references to the older cohort-derived bundled example dataset.
 
 ## v1.1.0 - 2026-07-17

@@ -76,6 +76,8 @@ mosaic-event-circos/
   example_output/
     synthetic.3types.default.png
     synthetic.3types.default_track_summary.tsv
+    synthetic.4types.default.png
+    synthetic.4types.default_track_summary.tsv
   scripts/
     generate_synthetic_example_data.R
 ```
@@ -383,12 +385,19 @@ Rscript plot_mosaic_circos.R \
 
 Rscript plot_mosaic_circos.R \
   --input=example_data/mosaic_events_autosomal.synthetic.4types.txt \
-  --output-prefix=example_output/synthetic.4types.with_undetermined \
+  --output-prefix=example_output/synthetic.4types.default \
   --genome=hg38 \
   --types=Gain,CN-LOH,Loss,Undetermined
 ```
 
-Example track summary for `example_output/synthetic.3types.default_track_summary.tsv`:
+Rendered example outputs are provided for both commands:
+
+```text
+example_output/synthetic.3types.default.png
+example_output/synthetic.4types.default.png
+```
+
+Three-type track summary, from `example_output/synthetic.3types.default_track_summary.tsv`:
 
 ```text
 type    n_events  max_lanes  track_height_fraction  lane_height_fraction
@@ -396,6 +405,18 @@ Gain    45        13         0.2116                 0.01628
 CN-LOH  50        18         0.2930                 0.01628
 Loss    42        12         0.1953                 0.01628
 ```
+
+Four-type track summary, from `example_output/synthetic.4types.default_track_summary.tsv`:
+
+```text
+type          n_events  max_lanes  track_height_fraction  lane_height_fraction
+Gain          45        13         0.1820                 0.01400
+CN-LOH        50        18         0.2520                 0.01400
+Loss          42        12         0.1680                 0.01400
+Undetermined  25         7         0.0980                 0.01400
+```
+
+The four-type plot uses the same fixed total event-track height (`0.70`) as the three-type plot. Adding `Undetermined` increases the total lane count from `43` to `50`, so the common `lane_height_fraction` changes from `0.70 / 43 = 0.01628` to `0.70 / 50 = 0.01400`.
 
 ### Template for GRCh37/hg19 Data
 
